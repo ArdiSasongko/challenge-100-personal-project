@@ -2,6 +2,7 @@ package app
 
 import (
 	"basic-crud/controller"
+	"basic-crud/errorhandling"
 	"encoding/json"
 	"net/http"
 
@@ -27,6 +28,8 @@ func NewRouter(p controller.PersonControllerInterface) *httprouter.Router {
 	router.DELETE("/api/person/:personID", p.Delete)
 	router.GET("/api/person/:personID", p.FindByID)
 	router.GET("/api/persons", p.FindAll)
+
+	router.PanicHandler = errorhandling.ErrorHandling
 
 	return router
 }

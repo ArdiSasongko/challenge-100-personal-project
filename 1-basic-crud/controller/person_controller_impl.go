@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"basic-crud/errorhandling"
 	"basic-crud/model/web"
 	"basic-crud/service"
 	"encoding/json"
@@ -26,13 +27,13 @@ func (c *PersonControllerImpl) Create(w http.ResponseWriter, r *http.Request, p 
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(personRequest)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		errorhandling.ErrorResponse(w, http.StatusBadRequest, "BAD REQUEST", err)
 		return
 	}
 
 	person, err := c.PersonService.Create(r.Context(), *personRequest)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		errorhandling.ErrorResponse(w, http.StatusBadRequest, "BAD REQUEST", err)
 		return
 	}
 
@@ -46,7 +47,7 @@ func (c *PersonControllerImpl) Create(w http.ResponseWriter, r *http.Request, p 
 	encoder := json.NewEncoder(w)
 	err = encoder.Encode(webResponse)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		errorhandling.ErrorResponse(w, http.StatusInternalServerError, "INTERNAL SERVER ERROR", err)
 		return
 	}
 }
@@ -57,20 +58,20 @@ func (c *PersonControllerImpl) Update(w http.ResponseWriter, r *http.Request, p 
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(personRequest)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		errorhandling.ErrorResponse(w, http.StatusBadRequest, "BAD REQUEST", err)
 		return
 	}
 
 	personID := p.ByName("personID")
 	id, err := strconv.Atoi(personID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		errorhandling.ErrorResponse(w, http.StatusNotFound, "NOT FOUND", err)
 		return
 	}
 
 	updatePerson, err := c.PersonService.Update(r.Context(), *personRequest, id)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		errorhandling.ErrorResponse(w, http.StatusBadRequest, "BAD REQUEST", err)
 		return
 	}
 
@@ -84,7 +85,7 @@ func (c *PersonControllerImpl) Update(w http.ResponseWriter, r *http.Request, p 
 	encoder := json.NewEncoder(w)
 	err = encoder.Encode(webResponse)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		errorhandling.ErrorResponse(w, http.StatusInternalServerError, "INTERNAL SERVER ERROR", err)
 		return
 	}
 }
@@ -93,13 +94,13 @@ func (c *PersonControllerImpl) Delete(w http.ResponseWriter, r *http.Request, p 
 	personID := p.ByName("personID")
 	id, err := strconv.Atoi(personID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		errorhandling.ErrorResponse(w, http.StatusNotFound, "NOT FOUND", err)
 		return
 	}
 
 	err = c.PersonService.Delete(r.Context(), id)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		errorhandling.ErrorResponse(w, http.StatusBadRequest, "BAD REQUEST", err)
 		return
 	}
 
@@ -112,7 +113,7 @@ func (c *PersonControllerImpl) Delete(w http.ResponseWriter, r *http.Request, p 
 	encoder := json.NewEncoder(w)
 	err = encoder.Encode(webResponse)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		errorhandling.ErrorResponse(w, http.StatusInternalServerError, "INTERNAL SERVER ERROR", err)
 		return
 	}
 }
@@ -121,13 +122,13 @@ func (c *PersonControllerImpl) FindByID(w http.ResponseWriter, r *http.Request, 
 	personID := p.ByName("personID")
 	id, err := strconv.Atoi(personID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		errorhandling.ErrorResponse(w, http.StatusBadRequest, "BAD REQUEST", err)
 		return
 	}
 
 	person, err := c.PersonService.FindByID(r.Context(), id)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		errorhandling.ErrorResponse(w, http.StatusNotFound, "NOT FOUND", err)
 		return
 	}
 
@@ -141,7 +142,7 @@ func (c *PersonControllerImpl) FindByID(w http.ResponseWriter, r *http.Request, 
 	encoder := json.NewEncoder(w)
 	err = encoder.Encode(webResponse)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		errorhandling.ErrorResponse(w, http.StatusInternalServerError, "INTERNAL SERVER ERROR", err)
 		return
 	}
 }
@@ -150,7 +151,7 @@ func (c *PersonControllerImpl) FindAll(w http.ResponseWriter, r *http.Request, p
 	persons, err := c.PersonService.FindAll(r.Context())
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		errorhandling.ErrorResponse(w, http.StatusBadRequest, "BAD REQUEST", err)
 		return
 	}
 
@@ -164,7 +165,7 @@ func (c *PersonControllerImpl) FindAll(w http.ResponseWriter, r *http.Request, p
 	encoder := json.NewEncoder(w)
 	err = encoder.Encode(webResponse)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		errorhandling.ErrorResponse(w, http.StatusInternalServerError, "INTERNAL SERVER ERROR", err)
 		return
 	}
 }
