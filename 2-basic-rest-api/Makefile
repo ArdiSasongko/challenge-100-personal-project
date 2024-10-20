@@ -19,3 +19,6 @@ migrate-up:
 
 migrate-down:
 	@go run cmd/migrate/main.go down
+
+tidy:
+	@go mod tidy

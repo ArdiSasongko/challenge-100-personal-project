@@ -1,6 +1,7 @@
 package user
 
 import (
+	"basic-rest-api/config"
 	"basic-rest-api/model/domain"
 	"basic-rest-api/model/web"
 	"basic-rest-api/repository"
@@ -32,7 +33,42 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 }
 
 func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
-	// Implement login logic here
+	// Parse JSON payload
+	payload := new(web.LoginUser)
+	if err := utils.ParseJSON(r, payload); err != nil {
+		utils.WriteErr(w, http.StatusBadRequest, err)
+		return
+	}
+
+	// Validate payload
+	if err := h.validate.Struct(payload); err != nil {
+		errors := err.(validator.ValidationErrors)
+		utils.WriteErr(w, http.StatusBadRequest, fmt.Errorf("invalid payload %s", errors))
+		return
+	}
+
+	// check email
+	user, err := h.repository.GetUserByEmail(payload.Email)
+	if err != nil {
+		utils.WriteErr(w, http.StatusBadRequest, fmt.Errorf("not found, email or password invalid", payload.Email))
+		return
+	}
+
+	if !auth.ComparePassword(user.Password, []byte(payload.Password)) {
+		utils.WriteErr(w, http.StatusBadRequest, fmt.Errorf("not found, email or password invalid", payload.Email))
+		return
+	}
+
+	secret := []byte(config.Envs.JWTSecret)
+	token, err := auth.CreateToken(secret, user.ID)
+	if err != nil {
+		utils.WriteErr(w, http.StatusInternalServerError, fmt.Errorf("not found, email or password invalid", payload.Email))
+		return
+	}
+	utils.WriteJSON(w, 200, map[string]interface{}{
+		"token": token,
+	})
+
 }
 
 func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {

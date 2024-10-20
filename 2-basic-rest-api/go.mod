@@ -10,6 +10,7 @@ require (
 
 require (
 	github.com/go-playground/validator/v10 v10.22.1
+	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/golang-migrate/migrate/v4 v4.18.1
 	github.com/joho/godotenv v1.5.1
 	github.com/stretchr/testify v1.9.0
