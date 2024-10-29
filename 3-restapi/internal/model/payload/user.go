@@ -15,3 +15,8 @@ type UpdateUser struct {
 	Email    string `json:"email" form:"email" validate:"omitempty,email"`
 	Password string `json:"password" form:"password" validate:"omitempty,alphanum"`
 }
+
+type LoginUser struct {
+	Email    string `json:"email" form:"email" validate:"required,email"`
+	Password string `json:"password" form:"password" validate:"required,alphanum"`
+}

@@ -22,6 +22,7 @@ func NewUserApi(Service userservice.UserServiceInterface) *UserApi {
 
 func (h *UserApi) RegisterRouter(router *mux.Router) {
 	router.HandleFunc("/register", h.Create).Methods("POST")
+	router.HandleFunc("/login", h.LoginUser).Methods("POST")
 	router.HandleFunc("/user/{id}", h.GetUser).Methods("GET")
 	router.HandleFunc("/user/{id}", h.UpdateUser).Methods("PUT")
 	router.HandleFunc("/user/{id}", h.DeleteUser).Methods("DELETE")
@@ -113,4 +114,24 @@ func (h *UserApi) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.WriteSuccess(w, http.StatusOK, "Success Delete", nil)
+}
+
+func (h *UserApi) LoginUser(w http.ResponseWriter, r *http.Request) {
+	payload := new(payload.LoginUser)
+	if err := utils.ParseJSON(r, payload); err != nil {
+		utils.WriteErr(w, http.StatusBadRequest, "BAD REQUEST", err)
+		return
+	}
+
+	result, err := h.Service.Login(r.Context(), *payload)
+	if err != nil {
+		if err == userservice.ErrInternal {
+			utils.WriteErr(w, http.StatusInternalServerError, "INTERNAL SERVER ERROR", err)
+			return
+		}
+		utils.WriteErr(w, http.StatusBadRequest, "BAD REQUEST", err)
+		return
+	}
+
+	utils.WriteSuccess(w, http.StatusOK, "Success Login", result)
 }

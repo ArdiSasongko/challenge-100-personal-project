@@ -30,3 +30,9 @@ type ToUser struct {
 	Username  string    `json:"username"`
 	CreatedAt time.Time `json:"createdat"`
 }
+
+type SuccessLogin struct {
+	ID    int    `json:"id"`
+	Email string `json:"email"`
+	Token string `json:"token"`
+}

@@ -15,7 +15,10 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-var ErrNotFound = errors.New("user not found")
+var (
+	ErrNotFound = errors.New("user not found")
+	ErrInternal = errors.New("internal server error")
+)
 
 type UserService struct {
 	repository userrepository.UserRepositoryInterface
@@ -201,4 +204,44 @@ func (s *UserService) DeleteUser(ctx context.Context, userID int) error {
 	}
 
 	return nil
+}
+
+func (s *UserService) Login(ctx context.Context, user payload.LoginUser) (*web.SuccessLogin, error) {
+	if err := s.validator.Struct(user); err != nil {
+		if errValid := utils.ValidError(err); errValid != nil {
+			return nil, errValid
+		}
+	}
+
+	tx, err := s.DB.Begin()
+	if err != nil {
+		return nil, err
+	}
+
+	defer utils.Tx(err, tx)
+
+	// find user
+	result, err := s.repository.FindByEmail(ctx, tx, user.Email)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("email or password invalid")
+	}
+
+	// compare password
+	if !utils.ComparePassword(result.Password, []byte(user.Password)) {
+		return nil, fmt.Errorf("email or password invalid")
+	}
+
+	token, err := utils.GeneratedToken(result.ID)
+	if err != nil {
+		return nil, ErrInternal
+	}
+
+	return &web.SuccessLogin{
+		ID:    result.ID,
+		Email: result.Email,
+		Token: token,
+	}, nil
 }

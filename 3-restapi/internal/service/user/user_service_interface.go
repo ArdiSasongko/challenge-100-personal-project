@@ -11,4 +11,5 @@ type UserServiceInterface interface {
 	UpdateUser(ctx context.Context, user payload.UpdateUser, userID int) (*web.ToUser, error)
 	DeleteUser(ctx context.Context, userID int) error
 	FindByID(ctx context.Context, userID int) (*web.ToUserDetail, error)
+	Login(ctx context.Context, user payload.LoginUser) (*web.SuccessLogin, error)
 }
