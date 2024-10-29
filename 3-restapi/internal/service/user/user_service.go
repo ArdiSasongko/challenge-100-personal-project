@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	"restapi/internal/model/domain"
 	"restapi/internal/model/payload"
 	"restapi/internal/model/web"
@@ -30,8 +31,10 @@ func NewUserService(repository userrepository.UserRepositoryInterface, validator
 func (s *UserService) CreateUser(ctx context.Context, user payload.CreateUser) (*web.ToUser, error) {
 	// validate user
 	if err := s.validator.Struct(user); err != nil {
-		errors := err.(validator.ValidationErrors)
-		return nil, errors
+		if errValid := utils.ValidError(err); errValid != nil {
+			return nil, errValid
+		}
+		return nil, err
 	}
 
 	tx, err := s.DB.Begin()
@@ -48,7 +51,8 @@ func (s *UserService) CreateUser(ctx context.Context, user payload.CreateUser) (
 	}
 
 	if err != sql.ErrNoRows {
-		return nil, fmt.Errorf("database error")
+		log.Println(err)
+		return nil, fmt.Errorf("error :%s", err.Error())
 	}
 
 	// hash password

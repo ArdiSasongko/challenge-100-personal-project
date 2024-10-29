@@ -26,7 +26,7 @@ func WriteErr(w http.ResponseWriter, status int, message string, err error) {
 	WriteJSON(w, status, web.FailedResponse{
 		StatusCode: status,
 		Message:    message,
-		Error:      err,
+		Error:      err.Error(),
 	})
 }
 
