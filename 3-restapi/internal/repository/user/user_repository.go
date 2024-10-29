@@ -58,12 +58,12 @@ func (r *UserRepository) Delete(ctx context.Context, tx *sql.Tx, userID int) err
 	defer cancel()
 
 	result, err := tx.ExecContext(ctx,
-		`DELETE users WHERE id = $1`,
+		`DELETE FROM users WHERE id = $1`,
 		userID,
 	)
 
 	if err != nil {
-		return fmt.Errorf("failed delete user")
+		return fmt.Errorf("failed delete user err: %s", err)
 	}
 
 	err = CheckRows(result, userID)
