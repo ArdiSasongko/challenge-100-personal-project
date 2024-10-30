@@ -26,6 +26,7 @@ func (h *UserApi) RegisterRouter(router *mux.Router) {
 	router.HandleFunc("/user/{id}", h.GetUser).Methods("GET")
 	router.HandleFunc("/user/{id}", h.UpdateUser).Methods("PUT")
 	router.HandleFunc("/user/{id}", h.DeleteUser).Methods("DELETE")
+	router.HandleFunc("/detail", utils.WithJWT(h.GetDetail)).Methods("GET")
 }
 
 func (h *UserApi) Create(w http.ResponseWriter, r *http.Request) {
@@ -92,6 +93,22 @@ func (h *UserApi) GetUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.WriteSuccess(w, http.StatusOK, "Success Updated", result)
+}
+
+func (h *UserApi) GetDetail(w http.ResponseWriter, r *http.Request) {
+	userID := utils.GetUserIdfromContext(r.Context())
+
+	result, err := h.Service.FindByID(r.Context(), userID)
+	if err != nil {
+		if err == userservice.ErrNotFound {
+			utils.WriteErr(w, http.StatusNotFound, "NOT FOUND", err)
+			return
+		}
+		utils.WriteErr(w, http.StatusBadRequest, "BAD REQUEST", err)
+		return
+	}
+
+	utils.WriteSuccess(w, http.StatusOK, "Success Get Detail", result)
 }
 
 func (h *UserApi) DeleteUser(w http.ResponseWriter, r *http.Request) {
