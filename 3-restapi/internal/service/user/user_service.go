@@ -3,7 +3,9 @@ package userservice
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
+	"log"
 	"restapi/internal/model/domain"
 	"restapi/internal/model/payload"
 	"restapi/internal/model/web"
@@ -11,6 +13,11 @@ import (
 	"restapi/internal/utils"
 
 	"github.com/go-playground/validator/v10"
+)
+
+var (
+	ErrNotFound = errors.New("user not found")
+	ErrInternal = errors.New("internal server error")
 )
 
 type UserService struct {
@@ -30,8 +37,10 @@ func NewUserService(repository userrepository.UserRepositoryInterface, validator
 func (s *UserService) CreateUser(ctx context.Context, user payload.CreateUser) (*web.ToUser, error) {
 	// validate user
 	if err := s.validator.Struct(user); err != nil {
-		errors := err.(validator.ValidationErrors)
-		return nil, errors
+		if errValid := utils.ValidError(err); errValid != nil {
+			return nil, errValid
+		}
+		return nil, err
 	}
 
 	tx, err := s.DB.Begin()
@@ -48,7 +57,8 @@ func (s *UserService) CreateUser(ctx context.Context, user payload.CreateUser) (
 	}
 
 	if err != sql.ErrNoRows {
-		return nil, fmt.Errorf("database error")
+		log.Println(err)
+		return nil, fmt.Errorf("error :%s", err.Error())
 	}
 
 	// hash password
@@ -77,5 +87,161 @@ func (s *UserService) CreateUser(ctx context.Context, user payload.CreateUser) (
 		Name:      result.Name,
 		Username:  result.Username,
 		CreatedAt: result.CreatedAt,
+	}, nil
+}
+
+func (s *UserService) UpdateUser(ctx context.Context, user payload.UpdateUser, userID int) (*web.ToUser, error) {
+	if err := s.validator.Struct(user); err != nil {
+		if errValid := utils.ValidError(err); errValid != nil {
+			return nil, errValid
+		}
+	}
+
+	tx, err := s.DB.Begin()
+	if err != nil {
+		return nil, err
+	}
+
+	defer utils.Tx(err, tx)
+
+	// check user
+	result, err := s.repository.FindByID(ctx, tx, userID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+
+	_, err = s.repository.FindByEmail(ctx, tx, user.Email)
+
+	if err == nil {
+		return nil, fmt.Errorf("user with %v already exists", user.Email)
+	}
+
+	if err != sql.ErrNoRows {
+		log.Println(err)
+		return nil, fmt.Errorf("error :%s", err.Error())
+	}
+
+	name := utils.DefaultValue[string](result.Name, user.Name)
+	age := utils.DefaultValue[int](result.Age, user.Age)
+	username := utils.DefaultValue[string](result.Username, user.Username)
+	email := utils.DefaultValue[string](result.Email, user.Email)
+
+	if user.Password != "" {
+		newPass, err := utils.HashPassword(user.Password)
+		if err != nil {
+			return nil, err
+		}
+		user.Password = newPass
+	}
+
+	password := utils.DefaultValue[string](result.Password, user.Password)
+
+	// update user
+	updateUser := domain.User{
+		Name:     name,
+		Age:      age,
+		Username: username,
+		Email:    email,
+		Password: password,
+	}
+
+	resultUpdate, err := s.repository.Update(ctx, tx, updateUser, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &web.ToUser{
+		ID:        resultUpdate.ID,
+		Name:      resultUpdate.Name,
+		Username:  resultUpdate.Username,
+		CreatedAt: resultUpdate.CreatedAt,
+	}, nil
+}
+
+func (s *UserService) FindByID(ctx context.Context, userID int) (*web.ToUserDetail, error) {
+	tx, err := s.DB.Begin()
+	if err != nil {
+		return nil, err
+	}
+
+	defer utils.Tx(err, tx)
+
+	user, err := s.repository.FindByID(ctx, tx, userID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+
+	return &web.ToUserDetail{
+		ID:        user.ID,
+		Name:      user.Name,
+		Username:  user.Username,
+		Email:     user.Email,
+		Password:  user.Password,
+		CreatedAt: user.CreatedAt,
+	}, nil
+}
+
+func (s *UserService) DeleteUser(ctx context.Context, userID int) error {
+	tx, err := s.DB.Begin()
+	if err != nil {
+		return err
+	}
+
+	defer utils.Tx(err, tx)
+
+	err = s.repository.Delete(ctx, tx, userID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return ErrNotFound
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (s *UserService) Login(ctx context.Context, user payload.LoginUser) (*web.SuccessLogin, error) {
+	if err := s.validator.Struct(user); err != nil {
+		if errValid := utils.ValidError(err); errValid != nil {
+			return nil, errValid
+		}
+	}
+
+	tx, err := s.DB.Begin()
+	if err != nil {
+		return nil, err
+	}
+
+	defer utils.Tx(err, tx)
+
+	// find user
+	result, err := s.repository.FindByEmail(ctx, tx, user.Email)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("email or password invalid")
+	}
+
+	// compare password
+	if !utils.ComparePassword(result.Password, []byte(user.Password)) {
+		return nil, fmt.Errorf("email or password invalid")
+	}
+
+	token, err := utils.GeneratedToken(result.ID)
+	if err != nil {
+		return nil, ErrInternal
+	}
+
+	return &web.SuccessLogin{
+		ID:    result.ID,
+		Email: result.Email,
+		Token: token,
 	}, nil
 }

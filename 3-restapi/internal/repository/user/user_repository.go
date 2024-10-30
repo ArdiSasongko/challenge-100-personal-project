@@ -58,12 +58,12 @@ func (r *UserRepository) Delete(ctx context.Context, tx *sql.Tx, userID int) err
 	defer cancel()
 
 	result, err := tx.ExecContext(ctx,
-		`DELETE users WHERE id = $1`,
+		`DELETE FROM users WHERE id = $1`,
 		userID,
 	)
 
 	if err != nil {
-		return fmt.Errorf("failed delete user")
+		return fmt.Errorf("failed delete user err: %s", err)
 	}
 
 	err = CheckRows(result, userID)
@@ -93,7 +93,7 @@ func (r *UserRepository) FindByID(ctx context.Context, tx *sql.Tx, userID int) (
 	defer cancel()
 
 	rows, err := tx.QueryContext(ctx,
-		`SELECT id, name, age, username, email, password FROM users WHERE id = $1`,
+		`SELECT id, name, age, username, email, password, created_at FROM users WHERE id = $1`,
 		userID,
 	)
 
@@ -121,7 +121,7 @@ func (r *UserRepository) FindByEmail(ctx context.Context, tx *sql.Tx, email stri
 	defer cancel()
 
 	rows, err := tx.QueryContext(ctx,
-		`SELECT id, name, age, username, email, password FROM users WHERE id = $1`,
+		`SELECT id, name, age, username, email, password, created_at FROM users WHERE email = $1`,
 		email,
 	)
 
@@ -143,7 +143,7 @@ func (r *UserRepository) FindByEmail(ctx context.Context, tx *sql.Tx, email stri
 	return user, nil
 }
 
-func (r *UserRepository) FIndAll(ctx context.Context, tx *sql.Tx) ([]*domain.User, error) {
+func (r *UserRepository) FindAll(ctx context.Context, tx *sql.Tx) ([]*domain.User, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
