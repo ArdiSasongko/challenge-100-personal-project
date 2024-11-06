@@ -1,0 +1,6 @@
+service:
+  port: ":8081"
+  cloud_inary_url: "cloudinary://125623191653773:5O4VvldzIFNxl4_oBWaUC-OPxv8@drbxy46kq"
+
+database:
+  data_source_name: "user=root password=mypassword dbname=upload_image host=localhost port=5432 sslmode=disable"

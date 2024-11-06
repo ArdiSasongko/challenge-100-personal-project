@@ -1,0 +1,5 @@
+CREATE TABLE IF NOT EXISTS files (
+    id SERIAL PRIMARY KEY,
+    file_name TEXT NOT NULL,
+    url TEXT NOT NULL
+);
