@@ -2,8 +2,11 @@ package main
 
 import (
 	"github.com/ArdiSasongko/challenge-100-personal-project/5-forum/internal/configs"
+	"github.com/ArdiSasongko/challenge-100-personal-project/5-forum/internal/handler/contenthandler"
 	"github.com/ArdiSasongko/challenge-100-personal-project/5-forum/internal/handler/userhandler"
+	"github.com/ArdiSasongko/challenge-100-personal-project/5-forum/internal/repository/contentrepository"
 	"github.com/ArdiSasongko/challenge-100-personal-project/5-forum/internal/repository/userrepository"
+	"github.com/ArdiSasongko/challenge-100-personal-project/5-forum/internal/service/contentservice"
 	"github.com/ArdiSasongko/challenge-100-personal-project/5-forum/internal/service/userservice"
 	"github.com/ArdiSasongko/challenge-100-personal-project/5-forum/pkg/internalsql"
 	"github.com/gin-gonic/gin"
@@ -41,5 +44,9 @@ func main() {
 	userhandler := userhandler.NewHandler(r, userservice, validate)
 	userhandler.RegisterRoutes()
 
+	contentRepo := contentrepository.NewRepository(db)
+	contentService := contentservice.NewService(contentRepo)
+	contentHandler := contenthandler.NewHandler(r, contentService, validate)
+	contentHandler.RegisterRouter()
 	r.Run(cfg.Service.Port)
 }
