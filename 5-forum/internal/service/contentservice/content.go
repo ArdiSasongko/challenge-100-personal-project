@@ -27,9 +27,28 @@ func (s *service) CreateContent(ctx context.Context, req contentmodel.ContentReq
 	err := s.repo.CreateContent(ctx, model)
 
 	if err != nil {
-		logrus.WithField("error", "failed create content").Error(err.Error())
+		logrus.WithField("content service layer", "failed create content").Error(err.Error())
 		return err
 	}
 
 	return nil
+}
+
+func (s *service) GetContent(ctx context.Context, contentId int64) (*contentmodel.GetResponse, error) {
+	contentData, err := s.repo.GetContent(ctx, contentId)
+	if err != nil {
+		logrus.WithField("content service layer", err.Error()).Error(err.Error())
+		return nil, err
+	}
+
+	comments, err := s.ur.GetCommentByContent(ctx, contentId)
+	if err != nil {
+		logrus.WithField("content service layer", err.Error()).Error(err.Error())
+		return nil, err
+	}
+
+	return &contentmodel.GetResponse{
+		Data:    *contentData,
+		Comment: *comments,
+	}, nil
 }

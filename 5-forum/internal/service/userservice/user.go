@@ -39,7 +39,7 @@ func (s *service) CreateUser(ctx context.Context, req usermodel.UserRequest) err
 	err = s.repo.CreateUser(ctx, &model)
 	if err != nil {
 		logrus.WithField(
-			"error", "failed create user",
+			"user service layer", "failed create user",
 		).Error(err.Error())
 
 		return err
@@ -66,14 +66,14 @@ func (s *service) LoginUser(ctx context.Context, req usermodel.LoginRequest) (*u
 
 	accessToken, err := jwt.CreateJWT(user.ID, user.Username, user.Email, s.cfg.Service.SecretJWT)
 	if err != nil {
-		logrus.WithField("error", "failed generated jwt token").Error(err.Error())
+		logrus.WithField("user service layer", "failed generated jwt token").Error(err.Error())
 		return nil, err
 	}
 
 	// check refreshToken di database
 	exitingRefreshToken, err := s.repo.GetToken(ctx, user.ID, time.Now())
 	if err != nil {
-		logrus.WithField("error", "failed get refresh token").Error(err.Error())
+		logrus.WithField("user service layer", "failed get refresh token").Error(err.Error())
 		return nil, err
 	}
 
@@ -102,7 +102,7 @@ func (s *service) LoginUser(ctx context.Context, req usermodel.LoginRequest) (*u
 
 	err = s.repo.InsertToken(ctx, model)
 	if err != nil {
-		logrus.WithField("error", "failed insert refresh token").Error(err.Error())
+		logrus.WithField("user service layer", "failed insert refresh token").Error(err.Error())
 		return nil, err
 	}
 

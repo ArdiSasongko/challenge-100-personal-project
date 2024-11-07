@@ -20,8 +20,8 @@ func NewHandler(api *gin.Engine, service userservice.Service, v *validator.Valid
 	}
 }
 
-func (h *handler) RegisterRoutes() {
-	router := h.Group("/user")
-	router.POST("/register", h.RegisterUser)
-	router.POST("/login", h.LoginUser)
+func (h *handler) RegisterRoutes(router *gin.RouterGroup) {
+	user := router.Group("/user")
+	user.POST("/register", h.RegisterUser)
+	user.POST("/login", h.LoginUser)
 }

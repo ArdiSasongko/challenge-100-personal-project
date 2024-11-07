@@ -38,15 +38,20 @@ func main() {
 	internalsql.InitStorage(db)
 
 	r := gin.Default()
+	v1 := r.Group("/v1/api")
 	validate := validator.New()
-	userrepo := userrepository.NewUserRepository(db)
-	userservice := userservice.NewUserService(userrepo, cfg)
-	userhandler := userhandler.NewHandler(r, userservice, validate)
-	userhandler.RegisterRoutes()
 
 	contentRepo := contentrepository.NewRepository(db)
-	contentService := contentservice.NewService(contentRepo)
-	contentHandler := contenthandler.NewHandler(r, contentService, validate)
-	contentHandler.RegisterRouter()
+	userrepo := userrepository.NewUserRepository(db)
+
+	contentService := contentservice.NewService(contentRepo, userrepo)
+	userservice := userservice.NewUserService(userrepo, contentRepo, cfg)
+
+	contentHandler := contenthandler.NewHandler(r, contentService, userservice, validate)
+	userhandler := userhandler.NewHandler(r, userservice, validate)
+
+	contentHandler.RegisterRouter(v1)
+	userhandler.RegisterRoutes(v1)
+
 	r.Run(cfg.Service.Port)
 }

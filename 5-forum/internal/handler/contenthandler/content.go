@@ -1,7 +1,9 @@
 package contenthandler
 
 import (
+	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/ArdiSasongko/challenge-100-personal-project/5-forum/internal/model/contentmodel"
 	"github.com/gin-gonic/gin"
@@ -53,4 +55,26 @@ func (h *handler) CreateContent(c *gin.Context) {
 		"statusCode": http.StatusCreated,
 		"message":    "CREATED",
 	})
+}
+
+func (h *handler) GetContent(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	contentIDStr := c.Param("content_id")
+	contentID, err := strconv.ParseInt(contentIDStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": errors.New("post_id not valid").Error(),
+		})
+		return
+	}
+
+	result, err := h.service.GetContent(ctx, contentID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+	}
+
+	c.JSON(http.StatusOK, result)
 }

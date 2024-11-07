@@ -23,3 +23,33 @@ type (
 		UpdatedBy      string    `db:"updated_by" json:"updated_by"`
 	}
 )
+
+type (
+	GetResponse struct {
+		Data    GetContentResponse `json:"data"`
+		Comment []Comment          `json:"comment"`
+	}
+
+	GetContentResponse struct {
+		Content ContentDetail `json:"content"`
+		Creator CreatorModel  `json:"creator"`
+	}
+
+	ContentDetail struct {
+		ContentID      int64    `json:"content_id"`
+		ContentTitle   string   `json:"content_title"`
+		Content        string   `json:"content"`
+		ContentHastags []string `json:"content_hastags"`
+	}
+	CreatorModel struct {
+		CreatedBy string    `json:"created_by"`
+		CreatedAt time.Time `json:"created_at"`
+	}
+
+	Comment struct {
+		ID       int64  `json:"id"`
+		UserID   int64  `json:"user_id"`
+		Username string `json:"username"`
+		Comment  string `json:"comment"`
+	}
+)

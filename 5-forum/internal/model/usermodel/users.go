@@ -26,6 +26,10 @@ type (
 		Email    string `json:"email" validate:"omitempty,email"`
 		Password string `json:"password" validate:"required,alphanum"`
 	}
+
+	CommentRequest struct {
+		Comment string `json:"comment" validate:"required"`
+	}
 )
 
 type (
@@ -50,6 +54,17 @@ type (
 		UpdatedAt    time.Time `db:"updated_at" json:"updated_at"`
 		CreatedBy    string    `db:"created_by" json:"created_by"`
 		UpdatedBy    string    `db:"updated_by" json:"updated_by"`
+	}
+
+	CommentModel struct {
+		ID        int64     `db:"id" json:"id"`
+		UserID    int64     `db:"user_id" json:"user_id"`
+		ContentID int64     `db:"content_id" json:"content_id"`
+		Comment   string    `db:"commnet" json:"comment"`
+		CreatedAt time.Time `db:"created_at" json:"created_at"`
+		UpdatedAt time.Time `db:"updated_at" json:"updated_at"`
+		CreatedBy string    `db:"created_by" json:"created_by"`
+		UpdatedBy string    `db:"updated_by" json:"updated_by"`
 	}
 )
 
