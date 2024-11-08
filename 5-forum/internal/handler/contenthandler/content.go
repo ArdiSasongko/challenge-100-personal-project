@@ -69,12 +69,51 @@ func (h *handler) GetContent(c *gin.Context) {
 		return
 	}
 
-	result, err := h.service.GetContent(ctx, contentID)
+	userID := c.GetInt64("user_id")
+	result, err := h.service.GetContent(ctx, contentID, userID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
 		})
+		return
 	}
 
 	c.JSON(http.StatusOK, result)
+}
+
+func (h *handler) GetContents(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	pI := c.Query("pageIndex")
+	pS := c.Query("pageSize")
+
+	if pS == "" {
+		pS = "5"
+	}
+
+	pageIndex, err := strconv.Atoi(pI)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	pageSize, err := strconv.Atoi(pS)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	response, err := h.service.GetContents(ctx, int64(pageSize), int64(pageIndex))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, response)
 }

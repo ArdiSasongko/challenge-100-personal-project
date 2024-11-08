@@ -24,16 +24,24 @@ func (r *repository) CreateContent(ctx context.Context, model contentmodel.Conte
 	return nil
 }
 
-func (r *repository) GetContent(ctx context.Context, contentID int64) (*contentmodel.GetContentResponse, error) {
-	query := `SELECT id, content_title, content, content_hastags, created_at, created_by FROM contents WHERE id = $1`
+func (r *repository) GetContent(ctx context.Context, contentID, userID int64) (*contentmodel.GetContentResponse, error) {
+	query := `
+	SELECT c.id, c.content_title, c.content, c.content_hastags, c.created_at, c.created_by, 
+	       COALESCE(ua.is_liked, FALSE) AS is_liked
+	FROM contents c
+	LEFT JOIN users_activities ua 
+	       ON c.id = ua.content_id AND ua.user_id = $2
+	WHERE c.id = $1
+	`
 
 	var (
 		model    contentmodel.ContentModel
 		response = &contentmodel.GetContentResponse{}
+		like     bool
 	)
 
-	row := r.db.QueryRowContext(ctx, query, contentID)
-	err := row.Scan(&model.ID, &model.ContentTitle, &model.Content, &model.ContentHastags, &model.CreatedAt, &model.CreatedBy)
+	row := r.db.QueryRowContext(ctx, query, contentID, userID)
+	err := row.Scan(&model.ID, &model.ContentTitle, &model.Content, &model.ContentHastags, &model.CreatedAt, &model.CreatedBy, &like)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
@@ -53,5 +61,49 @@ func (r *repository) GetContent(ctx context.Context, contentID int64) (*contentm
 		ContentHastags: strings.Split(model.ContentHastags, ","),
 	}
 
+	response.IsLike = like
+
 	return response, nil
+}
+
+func (r *repository) GetContents(ctx context.Context, limit, offset int64) (*contentmodel.GetContents, error) {
+	query := `SELECT id, content_title, content, content_hastags, created_at, created_by FROM contents ORDER BY updated_at DESC LIMIT $1 OFFSET $2`
+
+	var (
+		content  contentmodel.ContentModel
+		response contentmodel.GetContents
+		data     = make([]contentmodel.ContentDetail, 0)
+	)
+
+	rows, err := r.db.QueryContext(ctx, query, limit, offset)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	defer rows.Close()
+	for rows.Next() {
+		err := rows.Scan(&content.ID, &content.ContentTitle, &content.Content, &content.ContentHastags, &content.CreatedAt, &content.CreatedBy)
+
+		if err != nil {
+			return nil, err
+		}
+
+		data = append(data, contentmodel.ContentDetail{
+			ContentID:      content.ID,
+			ContentTitle:   content.ContentTitle,
+			Content:        content.Content,
+			ContentHastags: strings.Split(content.ContentHastags, ","),
+		})
+	}
+
+	response.Data = data
+	response.Pagination = contentmodel.Pagination{
+		Limit:  limit,
+		Offset: offset,
+	}
+
+	return &response, nil
 }

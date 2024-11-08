@@ -2,6 +2,7 @@ package contentservice
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"time"
 
@@ -34,8 +35,14 @@ func (s *service) CreateContent(ctx context.Context, req contentmodel.ContentReq
 	return nil
 }
 
-func (s *service) GetContent(ctx context.Context, contentId int64) (*contentmodel.GetResponse, error) {
-	contentData, err := s.repo.GetContent(ctx, contentId)
+func (s *service) GetContent(ctx context.Context, contentId, userID int64) (*contentmodel.GetResponse, error) {
+	contentData, err := s.repo.GetContent(ctx, contentId, userID)
+	if err != nil {
+		logrus.WithField("content service layer", err.Error()).Error(err.Error())
+		return nil, err
+	}
+
+	liked, err := s.ur.CountLikes(ctx, contentId)
 	if err != nil {
 		logrus.WithField("content service layer", err.Error()).Error(err.Error())
 		return nil, err
@@ -48,7 +55,20 @@ func (s *service) GetContent(ctx context.Context, contentId int64) (*contentmode
 	}
 
 	return &contentmodel.GetResponse{
-		Data:    *contentData,
-		Comment: *comments,
+		Data:      *contentData,
+		LikeCount: liked,
+		Comment:   *comments,
 	}, nil
+}
+
+func (s *service) GetContents(ctx context.Context, pagiSize, pageIndex int64) (*contentmodel.GetContents, error) {
+	limit := pagiSize
+	offset := pagiSize * (pageIndex - 1)
+	response, err := s.repo.GetContents(ctx, limit, offset)
+	if err != nil {
+		logrus.WithField("content service layer", err.Error()).Error(err.Error())
+		return nil, errors.New("failed get all contents")
+	}
+
+	return response, nil
 }

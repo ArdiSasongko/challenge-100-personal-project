@@ -27,4 +27,5 @@ type Service interface {
 	CreateUser(ctx context.Context, req usermodel.UserRequest) error
 	LoginUser(ctx context.Context, req usermodel.LoginRequest) (*usermodel.LoginResponse, error)
 	CreateComment(ctx context.Context, req usermodel.CommentRequest, contentID, userID int64, username string) error
+	UpsertUserActivities(ctx context.Context, userID, content_id int64, username string, req usermodel.UserActivitiesRequest) error
 }

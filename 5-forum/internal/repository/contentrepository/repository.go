@@ -19,5 +19,6 @@ func NewRepository(db *sql.DB) *repository {
 
 type Repository interface {
 	CreateContent(ctx context.Context, model contentmodel.ContentModel) error
-	GetContent(ctx context.Context, contentID int64) (*contentmodel.GetContentResponse, error)
+	GetContent(ctx context.Context, contentID, userID int64) (*contentmodel.GetContentResponse, error)
+	GetContents(ctx context.Context, limit, offset int64) (*contentmodel.GetContents, error)
 }

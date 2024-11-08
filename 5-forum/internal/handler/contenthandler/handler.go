@@ -28,6 +28,8 @@ func (h *handler) RegisterRouter(router *gin.RouterGroup) {
 	content := router.Group("/content")
 	content.Use(middleware.AuthMiddleware())
 	content.POST("/", h.CreateContent)
+	content.GET("/", h.GetContents)
 	content.GET("/:content_id", h.GetContent)
 	content.POST("/:content_id/comment", h.CreateComment)
+	content.PUT("/:content_id/activities", h.UpserUserActivities)
 }

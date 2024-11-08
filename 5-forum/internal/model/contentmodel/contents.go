@@ -25,14 +25,26 @@ type (
 )
 
 type (
+	GetContents struct {
+		Data       []ContentDetail `json:"data"`
+		Pagination Pagination      `json:"pagination"`
+	}
+
+	Pagination struct {
+		Limit  int64 `json:"limit"`
+		Offset int64 `json:"offset"`
+	}
+
 	GetResponse struct {
-		Data    GetContentResponse `json:"data"`
-		Comment []Comment          `json:"comment"`
+		Data      GetContentResponse `json:"data"`
+		LikeCount int                `json:"liked_count"`
+		Comment   []Comment          `json:"comment"`
 	}
 
 	GetContentResponse struct {
 		Content ContentDetail `json:"content"`
 		Creator CreatorModel  `json:"creator"`
+		IsLike  bool          `json:"is_liked"`
 	}
 
 	ContentDetail struct {

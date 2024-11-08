@@ -13,7 +13,7 @@ func (s *service) CreateComment(ctx context.Context, req usermodel.CommentReques
 	now := time.Now()
 
 	// checking post
-	content, err := s.cr.GetContent(ctx, contentID)
+	content, err := s.cr.GetContent(ctx, contentID, userID)
 	if err != nil {
 		return err
 	}

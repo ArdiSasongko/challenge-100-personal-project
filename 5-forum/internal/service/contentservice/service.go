@@ -22,5 +22,6 @@ func NewService(repo contentrepository.Repository, ur userrepository.Repository)
 
 type Service interface {
 	CreateContent(ctx context.Context, req contentmodel.ContentRequest, userID int64, username string) error
-	GetContent(ctx context.Context, contentId int64) (*contentmodel.GetResponse, error)
+	GetContent(ctx context.Context, contentId, userID int64) (*contentmodel.GetResponse, error)
+	GetContents(ctx context.Context, pagiSize, pageIndex int64) (*contentmodel.GetContents, error)
 }

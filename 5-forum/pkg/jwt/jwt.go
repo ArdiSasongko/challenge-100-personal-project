@@ -13,7 +13,7 @@ func CreateJWT(id int64, username, email, secretKey string) (string, error) {
 		"id":       id,
 		"username": username,
 		"email":    email,
-		"exp":      time.Now().Add(1 * time.Minute).Unix(),
+		"exp":      time.Now().Add(10 * time.Minute).Unix(),
 	})
 
 	key := []byte(secretKey)

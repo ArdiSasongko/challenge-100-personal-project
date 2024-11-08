@@ -26,4 +26,8 @@ type Repository interface {
 	GetToken(ctx context.Context, userID int64, now time.Time) (*usermodel.RefreshTokenModel, error)
 	CreateComment(ctx context.Context, model *usermodel.CommentModel) error
 	GetCommentByContent(ctx context.Context, content_id int64) (*[]contentmodel.Comment, error)
+	InsertLikeAndSave(ctx context.Context, model usermodel.UserActivities) error
+	GetUserActivity(ctx context.Context, model usermodel.UserActivities) (*usermodel.UserActivities, error)
+	UpdateUserActivities(ctx context.Context, model usermodel.UserActivities) error
+	CountLikes(ctx context.Context, content_id int64) (int, error)
 }
