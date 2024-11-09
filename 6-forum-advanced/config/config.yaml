@@ -1,6 +1,7 @@
 service:
   port: ":8182"
   secret_jwt : "2b5d5d69-2cb3-4224-a087-2d5c6e5d34cc"
+  cloud_inary_url : "cloudinary://125623191653773:5O4VvldzIFNxl4_oBWaUC-OPxv8@drbxy46kq"
 
 database:
   source_name: "user=root password=mypassword dbname=forum_advanced host=localhost port=5432 sslmode=disable"

@@ -61,3 +61,27 @@ func GeneratedRefreshToken() string {
 
 	return hex.EncodeToString(random)
 }
+
+func ValidateTokenWithOutExpired(tokenStr, secretKey string) (*ClaimsToken, error) {
+	claims := jwt.MapClaims{}
+
+	token, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
+		return []byte(secretKey), nil
+	}, jwt.WithoutClaimsValidation())
+
+	if err != nil {
+		logrus.WithField("validate token", err.Error()).Error(err.Error())
+		return nil, err
+	}
+
+	if !token.Valid {
+		logrus.WithField("validate token", "token invalid").Error("token invalid")
+		return nil, err
+	}
+
+	return &ClaimsToken{
+		ID:       int64(claims["id"].(float64)),
+		Username: claims["username"].(string),
+		Email:    claims["email"].(string),
+	}, nil
+}

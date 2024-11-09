@@ -30,6 +30,7 @@ func NewService(db *sql.DB, repo Repository, cfg *config.Config) *service {
 type Service interface {
 	Register(ctx context.Context, req UserRequest) error
 	Login(ctx context.Context, req LoginRequest) (*LoginResponse, error)
+	GetRefreshToken(ctx context.Context, userID int64, req TokenRequest) (string, error)
 }
 
 func (s *service) Register(ctx context.Context, req UserRequest) error {
@@ -167,4 +168,54 @@ func (s *service) Login(ctx context.Context, req LoginRequest) (*LoginResponse, 
 		AccessToken:  token,
 		RefreshToken: refreshToken,
 	}, nil
+}
+
+func (s *service) GetRefreshToken(ctx context.Context, userID int64, req TokenRequest) (string, error) {
+	tx, err := s.db.Begin()
+	if err != nil {
+		logrus.WithField("tx err", err.Error()).Error(err.Error())
+		return "", err
+	}
+
+	defer utils.Tx(tx, err)
+	exitingToken, err := s.repo.GetToken(ctx, tx, userID, time.Now())
+	if err != nil {
+		logrus.WithField("get refresh token", err.Error()).Error(err.Error())
+		return "", err
+	}
+
+	if exitingToken == nil {
+		logrus.WithField("get refresh token", "refresh token didnt exists").Error("refresh token didnt exists")
+		return "", err
+	}
+
+	if exitingToken.Token != req.Token {
+		logrus.WithField("get refresh token", "refresh token invalid").Error("refresh token invalid")
+		return "", err
+	}
+
+	user, err := s.repo.GetUser(ctx, tx, userID, "", "")
+	if err != nil {
+		logrus.WithField("get user", err.Error()).Error(err.Error())
+		return "", errors.New("invalid credentials")
+	}
+
+	if user == nil {
+		logrus.WithField("get user", "user didnt exists").Error("user didnt exists")
+		return "", errors.New("invalid credentials")
+	}
+
+	claims := jwt.ClaimsToken{
+		ID:       int64(user.ID),
+		Username: user.Username,
+		Email:    user.Email,
+	}
+
+	token, err := jwt.GeneratedToken(claims, s.cfg.Service.SecretJWT)
+	if err != nil {
+		logrus.WithField("generate jwt", err.Error()).Error(err.Error())
+		return "", err
+	}
+
+	return token, nil
 }

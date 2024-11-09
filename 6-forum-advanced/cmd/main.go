@@ -1,9 +1,12 @@
 package main
 
 import (
-	handler "github.com/ArdiSasongko/challenge-100-personal-project/6-forum-advanced/api/v1"
+	"github.com/ArdiSasongko/challenge-100-personal-project/6-forum-advanced/api/v1/contenthandler"
+	userhandler "github.com/ArdiSasongko/challenge-100-personal-project/6-forum-advanced/api/v1/userhandller"
 	"github.com/ArdiSasongko/challenge-100-personal-project/6-forum-advanced/config"
+	"github.com/ArdiSasongko/challenge-100-personal-project/6-forum-advanced/internal/contents"
 	"github.com/ArdiSasongko/challenge-100-personal-project/6-forum-advanced/internal/users"
+	cld "github.com/ArdiSasongko/challenge-100-personal-project/6-forum-advanced/pkg/cloudinary"
 	"github.com/ArdiSasongko/challenge-100-personal-project/6-forum-advanced/pkg/database"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -33,19 +36,31 @@ func main() {
 
 	database.IntiStorage(db)
 
+	cld, err := cld.Init(cfg.Service.CloudInaryURL)
+	if err != nil {
+		logrus.Error(err.Error())
+	}
+	logrus.Println(cld)
+
 	r := gin.Default()
 	v := validator.New()
 	v1 := r.Group("api/v1")
 
 	// repository
 	userRepo := users.NewRepository()
+	contentRepo := contents.NewRepository()
 
 	// service
 	userService := users.NewService(db, userRepo, cfg)
+	contentService := contents.NewService(contentRepo, cld, db)
 
 	// handler
-	userHandler := handler.NewUserHandler(r, userService, v)
+	userHandler := userhandler.NewHandler(r, userService, v)
+	contentHandler := contenthandler.NewHandler(r, contentService, v)
+
+	// register route
 	userHandler.RegisterRouter(v1)
+	contentHandler.RegisterRouter(v1)
 
 	r.Run(cfg.Service.Port)
 }
