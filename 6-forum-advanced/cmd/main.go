@@ -41,7 +41,7 @@ func main() {
 	userRepo := users.NewRepository()
 
 	// service
-	userService := users.NewService(db, userRepo)
+	userService := users.NewService(db, userRepo, cfg)
 
 	// handler
 	userHandler := handler.NewUserHandler(r, userService, v)

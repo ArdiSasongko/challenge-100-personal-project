@@ -26,6 +26,7 @@ func NewUserHandler(api *gin.Engine, service users.Service, v *validator.Validat
 func (h *handler) RegisterRouter(router *gin.RouterGroup) {
 	users := router.Group("/user")
 	users.POST("/register", h.Register)
+	users.POST("/login", h.Login)
 }
 
 func (h *handler) Register(c *gin.Context) {
@@ -69,5 +70,50 @@ func (h *handler) Register(c *gin.Context) {
 		StatusCode: http.StatusCreated,
 		Message:    "CREATED",
 		Data:       nil,
+	})
+}
+
+func (h *handler) Login(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	request := new(users.LoginRequest)
+	if err := c.ShouldBind(request); err != nil {
+		c.JSON(http.StatusInternalServerError, api.ResponseError{
+			StatusCode: http.StatusInternalServerError,
+			Message:    "INTERNAL SERVER ERROR",
+			Error:      err.Error(),
+		})
+		return
+	}
+
+	if err := h.Validate.Struct(request); err != nil {
+		if errorValidate, ok := err.(validator.ValidationErrors); ok {
+			errors := make(map[string]string)
+			for _, e := range errorValidate {
+				errors[e.Field()] = e.Error()
+			}
+			c.JSON(http.StatusBadRequest, api.ResponseError{
+				StatusCode: http.StatusBadRequest,
+				Message:    "BAD REQUEST",
+				Error:      errors,
+			})
+			return
+		}
+	}
+
+	response, err := h.service.Login(ctx, *request)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, api.ResponseError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "BAD REQUEST",
+			Error:      err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, api.ResponseSuccess{
+		StatusCode: http.StatusOK,
+		Message:    "OK",
+		Data:       response,
 	})
 }

@@ -6,6 +6,8 @@ import (
 	"errors"
 	"time"
 
+	"github.com/ArdiSasongko/challenge-100-personal-project/6-forum-advanced/config"
+	"github.com/ArdiSasongko/challenge-100-personal-project/6-forum-advanced/pkg/jwt"
 	"github.com/ArdiSasongko/challenge-100-personal-project/6-forum-advanced/utils"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
@@ -14,17 +16,20 @@ import (
 type service struct {
 	db   *sql.DB
 	repo Repository
+	cfg  *config.Config
 }
 
-func NewService(db *sql.DB, repo Repository) *service {
+func NewService(db *sql.DB, repo Repository, cfg *config.Config) *service {
 	return &service{
 		db:   db,
 		repo: repo,
+		cfg:  cfg,
 	}
 }
 
 type Service interface {
 	Register(ctx context.Context, req UserRequest) error
+	Login(ctx context.Context, req LoginRequest) (*LoginResponse, error)
 }
 
 func (s *service) Register(ctx context.Context, req UserRequest) error {
@@ -72,4 +77,94 @@ func (s *service) Register(ctx context.Context, req UserRequest) error {
 	}
 
 	return nil
+}
+
+func (s *service) Login(ctx context.Context, req LoginRequest) (*LoginResponse, error) {
+	tx, err := s.db.Begin()
+	if err != nil {
+		logrus.WithField("tx err", err.Error()).Error(err.Error())
+		return nil, err
+	}
+
+	defer utils.Tx(tx, err)
+
+	user, err := s.repo.GetUser(ctx, tx, 0, "", req.Email)
+	if err != nil {
+		logrus.WithField("get user", err.Error()).Error(err.Error())
+		return nil, errors.New("invalid credentials")
+	}
+
+	if user == nil {
+		logrus.WithField("get user", "user didnt exists").Error("user didnt exists")
+		return nil, errors.New("invalid credentials")
+	}
+
+	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password))
+	if err != nil {
+		logrus.WithField("compare password", err.Error()).Error(err.Error())
+		return nil, errors.New("invalid credentials")
+	}
+
+	// generated access token and refresh token
+	claims := jwt.ClaimsToken{
+		ID:       int64(user.ID),
+		Username: user.Username,
+		Email:    user.Email,
+	}
+
+	token, err := jwt.GeneratedToken(claims, s.cfg.Service.SecretJWT)
+	if err != nil {
+		logrus.WithField("generate jwt", err.Error()).Error(err.Error())
+		return nil, err
+	}
+
+	// check refresh token
+	exitingRefreshToken, err := s.repo.GetToken(ctx, tx, int64(user.ID), time.Now())
+	if err != nil {
+		logrus.WithField("get refresh token", err.Error()).Error(err.Error())
+		return nil, err
+	}
+
+	// generated refreshToken
+	refreshToken := jwt.GeneratedRefreshToken()
+	if refreshToken == "" {
+		logrus.WithField("created refresh token", "failed create refresh token").Error("failed create refresh token")
+		return nil, errors.New("failed generate refresh token")
+	}
+
+	model := RefreshTokenModel{
+		UserID:    int64(user.ID),
+		Token:     refreshToken,
+		ExpiredAt: time.Now().Add(10 * 24 * time.Hour),
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		CreatedBy: user.Username,
+		UpdatedBy: user.Username,
+	}
+
+	if exitingRefreshToken != nil {
+		if exitingRefreshToken.ExpiredAt.Before(time.Now()) {
+			err := s.repo.UpdateToken(ctx, tx, model)
+			if err != nil {
+				logrus.WithField("update refresh token", err.Error()).Error(err.Error())
+				return nil, err
+			}
+		}
+
+		return &LoginResponse{
+			AccessToken:  token,
+			RefreshToken: exitingRefreshToken.Token,
+		}, nil
+	}
+
+	err = s.repo.InsertToken(ctx, tx, model)
+	if err != nil {
+		logrus.WithField("insert refresh token", err.Error()).Error(err.Error())
+		return nil, err
+	}
+
+	return &LoginResponse{
+		AccessToken:  token,
+		RefreshToken: refreshToken,
+	}, nil
 }
