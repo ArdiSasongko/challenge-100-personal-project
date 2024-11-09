@@ -1,0 +1,6 @@
+service:
+  port: ":8182"
+  secret_jwt : "2b5d5d69-2cb3-4224-a087-2d5c6e5d34cc"
+
+database:
+  source_name: "user=root password=mypassword dbname=forum_advanced host=localhost port=5432 sslmode=disable"
