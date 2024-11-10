@@ -31,6 +31,7 @@ func NewService(repo Repository, cloudinary *cld.CloudService, db *sql.DB) *serv
 
 type Service interface {
 	CreateContent(ctx context.Context, userID int64, username string, req ContentRequest) error
+	GetContents(ctx context.Context, pageSize, pageIndex int64) (*ContentsResponse, error)
 }
 
 func (s *service) uploadToCloudInary(ctx context.Context, file *multipart.FileHeader) (string, string, error) {
@@ -138,4 +139,24 @@ func (s *service) CreateContent(ctx context.Context, userID int64, username stri
 	}
 
 	return nil
+}
+
+func (s *service) GetContents(ctx context.Context, pageSize, pageIndex int64) (*ContentsResponse, error) {
+	limit := pageSize
+	offset := pageSize * (pageIndex - 1)
+
+	tx, err := s.db.Begin()
+	if err != nil {
+		logrus.WithField("tx err", err.Error()).Error(err.Error())
+		return nil, err
+	}
+	defer utils.Tx(tx, err)
+
+	response, err := s.repo.GetContents(ctx, tx, limit, offset)
+	if err != nil {
+		logrus.WithField("get contents", err.Error()).Error("failed get contents")
+		return nil, err
+	}
+
+	return response, nil
 }

@@ -38,3 +38,24 @@ type (
 		File           []*multipart.FileHeader `json:"file" form:"file" validate:"omitempty"`
 	}
 )
+
+type (
+	ContentsResponse struct {
+		Data       []Data     `json:"data"`
+		Pagination Pagination `json:"pagination"`
+	}
+
+	Data struct {
+		ID             uint64   `json:"id"`
+		ContentTitle   string   `json:"content_title"`
+		ContentBody    string   `json:"content_body"`
+		FileUrl        string   `json:"file_url"`
+		ContentHastags []string `json:"content_hastags"`
+		CreatedBy      string   `json:"created_by"`
+	}
+
+	Pagination struct {
+		Limit  int64 `json:"limit"`
+		Offset int64 `json:"offset"`
+	}
+)
