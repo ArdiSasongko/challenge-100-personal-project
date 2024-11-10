@@ -3,6 +3,8 @@ package contents
 import (
 	"mime/multipart"
 	"time"
+
+	"github.com/ArdiSasongko/challenge-100-personal-project/6-forum-advanced/internal/comments"
 )
 
 type (
@@ -40,6 +42,16 @@ type (
 )
 
 type (
+	GetContent struct {
+		Content    ContentResponse             `json:"content"`
+		LikesCount int                         `json:"likes_count"`
+		Comment    []comments.CommentsResponse `json:"comments"`
+	}
+	ContentResponse struct {
+		Data      Data      `json:"data"`
+		IsLiked   bool      `json:"is_liked"`
+		CreatedAt time.Time `json:"created_at"`
+	}
 	ContentsResponse struct {
 		Data       []Data     `json:"data"`
 		Pagination Pagination `json:"pagination"`

@@ -41,19 +41,20 @@ func (r *repository) GetCommentsByContent(ctx context.Context, tx *sql.Tx, conte
 
 	query := `SELECT id, user_id, content_id, comment_body, updated_at, created_by FROM comments WHERE content_id = $1`
 
-	rows, err := tx.QueryContext(ctx, query, &content_id)
+	var (
+		comment  CommentsResponse
+		comments = make([]CommentsResponse, 0)
+	)
+
+	rows, err := tx.QueryContext(ctx, query, content_id)
 	if err != nil {
 		logrus.WithContext(ctx).WithField("error", err.Error()).Error(err.Error())
 		return nil, err
 	}
 	defer rows.Close()
 
-	var (
-		comment  CommentsResponse
-		comments = make([]CommentsResponse, 0)
-	)
 	for rows.Next() {
-		err := rows.Scan(&comment.ID, &comment.UserID, &comment.ContentID, &comment.UpdatedAt, &comment.CreatedBy)
+		err := rows.Scan(&comment.ID, &comment.UserID, &comment.ContentID, &comment.CommentBody, &comment.UpdatedAt, &comment.CreatedBy)
 		if err != nil {
 			logrus.WithContext(ctx).WithField("error", err.Error()).Error(err.Error())
 			return nil, err

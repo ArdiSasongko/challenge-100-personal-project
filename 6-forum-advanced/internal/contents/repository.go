@@ -20,6 +20,7 @@ type Repository interface {
 	InsertImage(ctx context.Context, tx *sql.Tx, model ImageModel) error
 	DeleteContent(ctx context.Context, tx *sql.Tx, contentID int64, userID int64) error
 	GetContents(ctx context.Context, tx *sql.Tx, limit, offset int64) (*ContentsResponse, error)
+	GetContentByID(ctx context.Context, tx *sql.Tx, userID, contentID int64) (*ContentResponse, error)
 }
 
 func (r *repository) InsertContent(ctx context.Context, tx *sql.Tx, model ContentModel) (int, error) {
@@ -122,4 +123,50 @@ func (r *repository) GetContents(ctx context.Context, tx *sql.Tx, limit, offset 
 	}
 
 	return &response, nil
+}
+
+func (r *repository) GetContentByID(ctx context.Context, tx *sql.Tx, userID, contentID int64) (*ContentResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	query := `
+	SELECT c.id, c.content_title, c.content_body, i.file_url, c.content_hastags, c.created_by, c.created_at,
+	       COALESCE(ua.is_liked, false) AS is_liked
+	FROM contents c 
+	LEFT JOIN images i ON i.content_id = c.id
+	LEFT JOIN users_activities ua ON c.id = ua.content_id AND ua.user_id = $1
+	WHERE c.id = $2
+	`
+
+	var (
+		fileurl  sql.NullString
+		isliked  bool
+		content  ContentModel
+		response = &ContentResponse{}
+	)
+
+	row := tx.QueryRowContext(ctx, query, userID, contentID)
+	err := row.Scan(&content.ID, &content.ContentTitle, &content.ContentBody, &fileurl, &content.ContentHastags, &content.CreatedBy, &content.CreatedAt, &isliked)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+
+		logrus.WithContext(ctx).WithField("error", err.Error()).Error(err.Error())
+		return nil, err
+	}
+
+	response.Data = Data{
+		ID:             content.ID,
+		ContentTitle:   content.ContentTitle,
+		ContentBody:    content.ContentBody,
+		FileUrl:        fileurl.String,
+		ContentHastags: strings.Split(content.ContentHastags, ","),
+		CreatedBy:      content.CreatedBy,
+	}
+
+	response.IsLiked = isliked
+	response.CreatedAt = content.CreatedAt
+	return response, nil
 }

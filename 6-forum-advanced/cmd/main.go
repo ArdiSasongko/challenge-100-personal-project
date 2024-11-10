@@ -7,6 +7,7 @@ import (
 	"github.com/ArdiSasongko/challenge-100-personal-project/6-forum-advanced/internal/comments"
 	"github.com/ArdiSasongko/challenge-100-personal-project/6-forum-advanced/internal/contents"
 	"github.com/ArdiSasongko/challenge-100-personal-project/6-forum-advanced/internal/users"
+	"github.com/ArdiSasongko/challenge-100-personal-project/6-forum-advanced/internal/usersactivities"
 	cld "github.com/ArdiSasongko/challenge-100-personal-project/6-forum-advanced/pkg/cloudinary"
 	"github.com/ArdiSasongko/challenge-100-personal-project/6-forum-advanced/pkg/database"
 	"github.com/gin-gonic/gin"
@@ -51,15 +52,17 @@ func main() {
 	userRepo := users.NewRepository()
 	contentRepo := contents.NewRepository()
 	commentRepo := comments.NewRepository()
+	usersActivitiesRepo := usersactivities.NewRepository()
 
 	// service
 	userService := users.NewService(db, userRepo, cfg)
-	contentService := contents.NewService(contentRepo, cld, db)
+	contentService := contents.NewService(contentRepo, usersActivitiesRepo, commentRepo, cld, db)
 	commentService := comments.NewService(commentRepo, db)
+	usersActivitesService := usersactivities.NewService(usersActivitiesRepo, db)
 
 	// handler
 	userHandler := userhandler.NewHandler(r, userService, v)
-	contentHandler := contenthandler.NewHandler(r, contentService, commentService, v)
+	contentHandler := contenthandler.NewHandler(r, contentService, commentService, usersActivitesService, v)
 
 	// register route
 	userHandler.RegisterRouter(v1)

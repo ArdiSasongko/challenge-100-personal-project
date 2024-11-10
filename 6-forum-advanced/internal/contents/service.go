@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ArdiSasongko/challenge-100-personal-project/6-forum-advanced/internal/comments"
+	"github.com/ArdiSasongko/challenge-100-personal-project/6-forum-advanced/internal/usersactivities"
 	cld "github.com/ArdiSasongko/challenge-100-personal-project/6-forum-advanced/pkg/cloudinary"
 	"github.com/ArdiSasongko/challenge-100-personal-project/6-forum-advanced/utils"
 	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
@@ -17,13 +19,17 @@ import (
 
 type service struct {
 	repo       Repository
+	uar        usersactivities.Repository
+	cr         comments.Repository
 	cloudinary *cld.CloudService
 	db         *sql.DB
 }
 
-func NewService(repo Repository, cloudinary *cld.CloudService, db *sql.DB) *service {
+func NewService(repo Repository, uar usersactivities.Repository, cr comments.Repository, cloudinary *cld.CloudService, db *sql.DB) *service {
 	return &service{
 		repo:       repo,
+		uar:        uar,
+		cr:         cr,
 		cloudinary: cloudinary,
 		db:         db,
 	}
@@ -32,6 +38,7 @@ func NewService(repo Repository, cloudinary *cld.CloudService, db *sql.DB) *serv
 type Service interface {
 	CreateContent(ctx context.Context, userID int64, username string, req ContentRequest) error
 	GetContents(ctx context.Context, pageSize, pageIndex int64) (*ContentsResponse, error)
+	GetContent(ctx context.Context, userID, contentID int64) (*GetContent, error)
 }
 
 func (s *service) uploadToCloudInary(ctx context.Context, file *multipart.FileHeader) (string, string, error) {
@@ -159,4 +166,46 @@ func (s *service) GetContents(ctx context.Context, pageSize, pageIndex int64) (*
 	}
 
 	return response, nil
+}
+
+func (s *service) GetContent(ctx context.Context, userID, contentID int64) (*GetContent, error) {
+	tx, err := s.db.Begin()
+	if err != nil {
+		logrus.WithField("tx err", err.Error()).Error(err.Error())
+		return nil, err
+	}
+	defer utils.Tx(tx, err)
+
+	content, err := s.repo.GetContentByID(ctx, tx, userID, contentID)
+	if err != nil {
+		logrus.WithField("get content", err.Error()).Error("failed get contents")
+		return nil, err
+	}
+
+	if content == nil {
+		logrus.WithField("get contents", "content not available").Error("failed get contents")
+		return nil, err
+	}
+
+	likes, err := s.uar.CountLikes(ctx, tx, contentID)
+	if err != nil {
+		logrus.WithField("get likes", err.Error()).Error("failed get contents")
+		return nil, err
+	}
+
+	allComents, err := s.cr.GetCommentsByContent(ctx, tx, contentID)
+	if err != nil {
+		logrus.WithField("get comments", err.Error()).Error("failed get contents")
+		return nil, err
+	}
+
+	if allComents == nil {
+		allComents = &[]comments.CommentsResponse{}
+	}
+
+	return &GetContent{
+		Content:    *content,
+		LikesCount: likes,
+		Comment:    *allComents,
+	}, nil
 }
