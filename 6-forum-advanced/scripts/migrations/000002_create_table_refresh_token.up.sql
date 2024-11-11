@@ -1,0 +1,11 @@
+CREATE TABLE IF NOT EXISTS refresh_token (
+    id SMALLSERIAL PRIMARY KEY,
+    user_id INT NOT NULL,
+    token VARCHAR(255) NOT NULL,
+    expired_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(255) NOT NULL,
+    updated_by VARCHAR(255) NOT NULL,
+    CONSTRAINT fk_user_id_refresh_token FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
