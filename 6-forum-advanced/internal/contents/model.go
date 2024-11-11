@@ -39,6 +39,12 @@ type (
 		ContentHastags []string                `json:"content_hastags" form:"content_hastags" validate:"omitempty"`
 		File           []*multipart.FileHeader `json:"file" form:"file" validate:"omitempty"`
 	}
+
+	ContentUpdateRequest struct {
+		ContentTitle   string   `json:"content_title" form:"content_title" validate:"omitempty,min=5,max=255"`
+		ContentBody    string   `json:"content_body" form:"content_body" validate:"omitempty"`
+		ContentHastags []string `json:"content_hastags" form:"content_hastags" validate:"omitempty"`
+	}
 )
 
 type (

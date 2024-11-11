@@ -42,6 +42,8 @@ func (h *handler) RegisterRouter(router *gin.RouterGroup) {
 	content.PUT(":content_id/saved", h.UpsertUserActivities)
 	content.POST("/upload", h.UploadContent)
 	content.GET(":content_id", h.GetContent)
+	content.PUT(":content_id", h.UpdateContent)
+	content.DELETE(":content_id", h.DeleteContent)
 }
 
 func (h *handler) UploadContent(c *gin.Context) {
@@ -290,5 +292,96 @@ func (h *handler) GetContent(c *gin.Context) {
 		StatusCode: http.StatusOK,
 		Message:    "OK",
 		Data:       response,
+	})
+}
+
+func (h *handler) UpdateContent(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	request := new(contents.ContentUpdateRequest)
+	if err := c.ShouldBind(request); err != nil {
+		c.JSON(http.StatusInternalServerError, api.ResponseError{
+			StatusCode: http.StatusInternalServerError,
+			Message:    "INTERNAL SERVER ERROR",
+			Error:      err.Error(),
+		})
+		return
+	}
+
+	if err := h.Validate.Struct(request); err != nil {
+		if errorValidate, ok := err.(validator.ValidationErrors); ok {
+			errors := make(map[string]string)
+			for _, e := range errorValidate {
+				errors[e.Field()] = e.Error()
+			}
+			c.JSON(http.StatusBadRequest, api.ResponseError{
+				StatusCode: http.StatusBadRequest,
+				Message:    "BAD REQUEST",
+				Error:      errors,
+			})
+			return
+		}
+	}
+
+	userID := c.GetInt64("id")
+	username := c.GetString("username")
+	contentIDStr := c.Param("content_id")
+	contentID, err := strconv.Atoi(contentIDStr)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, api.ResponseError{
+			StatusCode: http.StatusInternalServerError,
+			Message:    "INTERNAL SERVER ERROR",
+			Error:      err.Error(),
+		})
+		return
+	}
+
+	err = h.s.UpdateContent(ctx, userID, int64(contentID), username, *request)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, api.ResponseError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "BAD REQUEST",
+			Error:      err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, api.ResponseSuccess{
+		StatusCode: http.StatusOK,
+		Message:    "OK",
+		Data:       nil,
+	})
+}
+
+func (h *handler) DeleteContent(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	userID := c.GetInt64("id")
+	username := c.GetString("username")
+	contentIDStr := c.Param("content_id")
+	contentID, err := strconv.Atoi(contentIDStr)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, api.ResponseError{
+			StatusCode: http.StatusInternalServerError,
+			Message:    "INTERNAL SERVER ERROR",
+			Error:      err.Error(),
+		})
+		return
+	}
+
+	err = h.s.DeleteContent(ctx, userID, int64(contentID), username)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, api.ResponseError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "BAD REQUEST",
+			Error:      err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, api.ResponseSuccess{
+		StatusCode: http.StatusOK,
+		Message:    "OK",
+		Data:       nil,
 	})
 }

@@ -21,6 +21,9 @@ type Repository interface {
 	DeleteContent(ctx context.Context, tx *sql.Tx, contentID int64, userID int64) error
 	GetContents(ctx context.Context, tx *sql.Tx, limit, offset int64) (*ContentsResponse, error)
 	GetContentByID(ctx context.Context, tx *sql.Tx, userID, contentID int64) (*ContentResponse, error)
+	UpdateContent(ctx context.Context, tx *sql.Tx, userID, contentID int64, model ContentModel) error
+	GetImagebyContent(ctx context.Context, tx *sql.Tx, contentID int64) (*[]ImageModel, error)
+	DeleteImages(ctx context.Context, tx *sql.Tx, contentID int64) error
 }
 
 func (r *repository) InsertContent(ctx context.Context, tx *sql.Tx, model ContentModel) (int, error) {
@@ -169,4 +172,61 @@ func (r *repository) GetContentByID(ctx context.Context, tx *sql.Tx, userID, con
 	response.IsLiked = isliked
 	response.CreatedAt = content.CreatedAt
 	return response, nil
+}
+
+func (r *repository) UpdateContent(ctx context.Context, tx *sql.Tx, userID, contentID int64, model ContentModel) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	query := `UPDATE contents SET content_title = $1, content_body = $2, content_hastags = $3, updated_at = $4, updated_by = $5 WHERE user_id = $6 AND id = $7`
+
+	_, err := tx.ExecContext(ctx, query, model.ContentTitle, model.ContentBody, model.ContentHastags, model.UpdatedAt, model.UpdatedBy, userID, contentID)
+
+	if err != nil {
+		logrus.WithContext(ctx).WithField("error", err.Error()).Error(err.Error())
+		return err
+	}
+
+	return nil
+}
+
+func (r *repository) GetImagebyContent(ctx context.Context, tx *sql.Tx, contentID int64) (*[]ImageModel, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	query := `SELECT id, content_id, file_name, file_url, created_at, updated_at, created_by, updated_by FROM images WHERE content_id = $1`
+
+	var image ImageModel
+	var images = make([]ImageModel, 0)
+
+	row := tx.QueryRowContext(ctx, query, contentID)
+	err := row.Scan(&image.ID, &image.ContentID, &image.FileName, &image.FileUrl, &image.CreatedAt, &image.UpdatedAt, &image.CreatedBy, &image.UpdatedBy)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+
+		logrus.WithContext(ctx).WithField("error", err.Error()).Error(err.Error())
+		return nil, err
+	}
+
+	images = append(images, image)
+
+	return &images, nil
+}
+
+func (r *repository) DeleteImages(ctx context.Context, tx *sql.Tx, contentID int64) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	query := `DELETE FROM images WHERE content_id = $1`
+
+	_, err := tx.ExecContext(ctx, query, contentID)
+	if err != nil {
+		logrus.WithContext(ctx).WithField("error", err.Error()).Error(err.Error())
+		return err
+	}
+
+	return nil
 }

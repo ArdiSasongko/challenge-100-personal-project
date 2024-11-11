@@ -3,9 +3,11 @@ package contents
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"io"
 	"mime/multipart"
 	"os"
+	"path"
 	"strings"
 	"time"
 
@@ -39,6 +41,8 @@ type Service interface {
 	CreateContent(ctx context.Context, userID int64, username string, req ContentRequest) error
 	GetContents(ctx context.Context, pageSize, pageIndex int64) (*ContentsResponse, error)
 	GetContent(ctx context.Context, userID, contentID int64) (*GetContent, error)
+	UpdateContent(ctx context.Context, userID, contentID int64, username string, req ContentUpdateRequest) error
+	DeleteContent(ctx context.Context, userID, contentID int64, username string) error
 }
 
 func (s *service) uploadToCloudInary(ctx context.Context, file *multipart.FileHeader) (string, string, error) {
@@ -80,6 +84,12 @@ func (s *service) uploadToCloudInary(ctx context.Context, file *multipart.FileHe
 	}
 
 	return cloud.SecureURL, cloud.PublicID, nil
+}
+
+func (s *service) getPublicID(fileUrl string) (string, error) {
+	filePath := strings.Split(fileUrl, "/go-folder/")[1]
+	publicID := strings.TrimSuffix(filePath, path.Ext(filePath))
+	return publicID, nil
 }
 
 func (s *service) CreateContent(ctx context.Context, userID int64, username string, req ContentRequest) error {
@@ -184,7 +194,7 @@ func (s *service) GetContent(ctx context.Context, userID, contentID int64) (*Get
 
 	if content == nil {
 		logrus.WithField("get contents", "content not available").Error("failed get contents")
-		return nil, err
+		return nil, errors.New("content not available")
 	}
 
 	likes, err := s.uar.CountLikes(ctx, tx, contentID)
@@ -208,4 +218,117 @@ func (s *service) GetContent(ctx context.Context, userID, contentID int64) (*Get
 		LikesCount: likes,
 		Comment:    *allComents,
 	}, nil
+}
+
+func (s *service) UpdateContent(ctx context.Context, userID, contentID int64, username string, req ContentUpdateRequest) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		logrus.WithField("tx err", err.Error()).Error(err.Error())
+		return err
+	}
+	defer utils.Tx(tx, err)
+
+	content, err := s.repo.GetContentByID(ctx, tx, userID, contentID)
+	if err != nil {
+		logrus.WithField("get content", err.Error()).Error("failed get contents")
+		return err
+	}
+
+	if content == nil {
+		logrus.WithField("get contents", "content not available").Error("failed get contents")
+		return errors.New("content not available")
+	}
+
+	if content.Data.CreatedBy != username {
+		logrus.WithField("get contents", "user didnt match").Error("user didnt match")
+		return errors.New("UNAUTHORIZED for updated this content")
+	}
+
+	logrus.Info("req content hastags :", req.ContentHastags)
+	logrus.Info("current content hastags :", content.Data.ContentHastags)
+	req.ContentTitle = utils.DefaultValue[string](content.Data.ContentTitle, req.ContentTitle)
+	req.ContentBody = utils.DefaultValue[string](content.Data.ContentBody, req.ContentBody)
+	req.ContentHastags = utils.DefaultValue[[]string](content.Data.ContentHastags, req.ContentHastags)
+	logrus.Info("req content hastags :", req.ContentHastags)
+
+	now := time.Now()
+	model := ContentModel{
+		ContentTitle:   req.ContentTitle,
+		ContentBody:    req.ContentBody,
+		ContentHastags: strings.Join(req.ContentHastags, ","),
+		UpdatedAt:      now,
+		UpdatedBy:      username,
+	}
+
+	err = s.repo.UpdateContent(ctx, tx, userID, contentID, model)
+	if err != nil {
+		logrus.WithField("update content", err.Error()).Error("failed update content")
+		return err
+	}
+
+	return nil
+}
+
+func (s *service) DeleteContent(ctx context.Context, userID, contentID int64, username string) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		logrus.WithField("tx err", err.Error()).Error(err.Error())
+		return err
+	}
+	defer utils.Tx(tx, err)
+
+	content, err := s.repo.GetContentByID(ctx, tx, userID, contentID)
+	if err != nil {
+		logrus.WithField("get content", err.Error()).Error("failed get contents")
+		return err
+	}
+
+	if content == nil {
+		logrus.WithField("get contents", "content not available").Error("failed get contents")
+		return errors.New("content not available")
+	}
+
+	if content.Data.CreatedBy != username {
+		logrus.WithField("get contents", "user didnt match").Error("user didnt match")
+		return errors.New("UNAUTHORIZED for updated this content")
+	}
+
+	images, err := s.repo.GetImagebyContent(ctx, tx, contentID)
+	if err != nil {
+		logrus.WithField("get images", err.Error()).Error("failed get contents")
+		return err
+	}
+
+	if images == nil {
+		logrus.WithField("get images", "images not available").Error("images get contents")
+		return errors.New("images not available")
+	}
+
+	for _, image := range *images {
+		publicId, err := s.getPublicID(image.FileUrl)
+		if err != nil {
+			logrus.WithField("extract publicID", err.Error()).Error("failed to extract publicID")
+			return err
+		}
+
+		_, err = s.cloudinary.Client.Upload.Destroy(ctx, uploader.DestroyParams{PublicID: publicId})
+		if err != nil {
+			logrus.WithField("delete image", err.Error()).Error("failed to delete image")
+			return err
+		}
+
+		err = s.repo.DeleteImages(ctx, tx, image.ContentID)
+		if err != nil {
+			logrus.WithField("delete image", err.Error()).Error("failed to delete image")
+			return err
+		}
+	}
+
+	err = s.repo.DeleteContent(ctx, tx, contentID, userID)
+	if err != nil {
+		logrus.WithField("delete content", err.Error()).Error("failed to delete content")
+		return err
+	}
+
+	return nil
 }
