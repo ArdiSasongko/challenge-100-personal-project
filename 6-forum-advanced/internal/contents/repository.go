@@ -19,7 +19,7 @@ type Repository interface {
 	InsertContent(ctx context.Context, tx *sql.Tx, model ContentModel) (int, error)
 	InsertImage(ctx context.Context, tx *sql.Tx, model ImageModel) error
 	DeleteContent(ctx context.Context, tx *sql.Tx, contentID int64, userID int64) error
-	GetContents(ctx context.Context, tx *sql.Tx, limit, offset int64) (*ContentsResponse, error)
+	GetContents(ctx context.Context, tx *sql.Tx, limit, offset int64, search string) (*ContentsResponse, error)
 	GetContentByID(ctx context.Context, tx *sql.Tx, userID, contentID int64) (*ContentResponse, error)
 	UpdateContent(ctx context.Context, tx *sql.Tx, userID, contentID int64, model ContentModel) error
 	GetImagebyContent(ctx context.Context, tx *sql.Tx, contentID int64) (*[]ImageModel, error)
@@ -73,24 +73,36 @@ func (r *repository) DeleteContent(ctx context.Context, tx *sql.Tx, contentID in
 	return nil
 }
 
-func (r *repository) GetContents(ctx context.Context, tx *sql.Tx, limit, offset int64) (*ContentsResponse, error) {
+func (r *repository) GetContents(ctx context.Context, tx *sql.Tx, limit, offset int64, search string) (*ContentsResponse, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	query := `SELECT c.id, c.content_title, c.content_body, i.file_url, c.content_hastags, c.created_by 
+	baseQuery := `SELECT c.id, c.content_title, c.content_body, i.file_url, c.content_hastags, c.created_by 
 	FROM contents c 
 	LEFT JOIN images i ON i.content_id = c.id 
-	ORDER BY c.created_at 
-	DESC LIMIT $1 OFFSET $2`
+	`
+
+	var (
+		query string
+		args  []interface{}
+	)
+
+	if search == "" {
+		query = baseQuery + ` WHERE c.search_vector @@ to_tsquery($1) ORDER BY c.created_at DESC LIMIT $2 OFFSET $3`
+		args = append(args, search, limit, offset)
+	} else {
+		query = baseQuery + ` ORDER BY c.created_at DESC LIMIT $1 OFFSET $2`
+		args = append(args, limit, offset)
+	}
 
 	var (
 		fileurl  sql.NullString
 		content  ContentModel
-		contents = make([]Data, 0)
+		contents = make([]Data, 0, limit)
 		response ContentsResponse
 	)
 
-	rows, err := tx.QueryContext(ctx, query, limit, offset)
+	rows, err := tx.QueryContext(ctx, query, args...)
 	if err != nil {
 		logrus.WithContext(ctx).WithField("error", "contents didnt available").Error("content didnt available")
 		return nil, err

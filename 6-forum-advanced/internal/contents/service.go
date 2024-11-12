@@ -39,7 +39,7 @@ func NewService(repo Repository, uar usersactivities.Repository, cr comments.Rep
 
 type Service interface {
 	CreateContent(ctx context.Context, userID int64, username string, req ContentRequest) error
-	GetContents(ctx context.Context, pageSize, pageIndex int64) (*ContentsResponse, error)
+	GetContents(ctx context.Context, pageSize, pageIndex int64, search string) (*ContentsResponse, error)
 	GetContent(ctx context.Context, userID, contentID int64) (*GetContent, error)
 	UpdateContent(ctx context.Context, userID, contentID int64, username string, req ContentUpdateRequest) error
 	DeleteContent(ctx context.Context, userID, contentID int64, username string) error
@@ -158,7 +158,7 @@ func (s *service) CreateContent(ctx context.Context, userID int64, username stri
 	return nil
 }
 
-func (s *service) GetContents(ctx context.Context, pageSize, pageIndex int64) (*ContentsResponse, error) {
+func (s *service) GetContents(ctx context.Context, pageSize, pageIndex int64, search string) (*ContentsResponse, error) {
 	limit := pageSize
 	offset := pageSize * (pageIndex - 1)
 
@@ -169,7 +169,7 @@ func (s *service) GetContents(ctx context.Context, pageSize, pageIndex int64) (*
 	}
 	defer utils.Tx(tx, err)
 
-	response, err := s.repo.GetContents(ctx, tx, limit, offset)
+	response, err := s.repo.GetContents(ctx, tx, limit, offset, search)
 	if err != nil {
 		logrus.WithField("get contents", err.Error()).Error("failed get contents")
 		return nil, err
