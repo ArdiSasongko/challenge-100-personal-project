@@ -157,12 +157,9 @@ func (h *handler) InsertComment(c *gin.Context) {
 func (h *handler) GetContents(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	pI := c.Query("page_index")
-	pS := c.Query("page_size")
-
-	if pS == "" {
-		pS = "5"
-	}
+	search := c.DefaultQuery("search", "")
+	pI := c.DefaultQuery("page_index", "1")
+	pS := c.DefaultQuery("page_size", "5")
 
 	pageIndex, err := strconv.Atoi(pI)
 	if err != nil {
@@ -184,7 +181,7 @@ func (h *handler) GetContents(c *gin.Context) {
 		return
 	}
 
-	response, err := h.s.GetContents(ctx, int64(pageSize), int64(pageIndex))
+	response, err := h.s.GetContents(ctx, int64(pageSize), int64(pageIndex), search)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, api.ResponseError{
 			StatusCode: http.StatusBadRequest,
